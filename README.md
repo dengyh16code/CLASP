@@ -1,4 +1,4 @@
-[text](CLASP/README.md)# An Official Code Implementation of CLASP: General-purpose Clothes Manipulation with Semantic Keypoints
+# An Official Code Implementation of CLASP: General-purpose Clothes Manipulation with Semantic Keypoints
 
 If you find this work useful, please cite:
 ```
