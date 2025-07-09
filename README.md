@@ -20,11 +20,11 @@ If you find this work useful, please cite:
 
 3) Installing [[SD+DINO]](https://github.com/Junyi42/geoaware-sc).
 
-4) After installing these models, please replace the code blocks in the original code that were used to call them from our internal servers. The source code of services on our internal servers can be found on `cloud_services/services`.
+4) After installing these models, please replace the code blocks in the original code that were used to call them from our internal servers. The source code of services on our internal servers can be found on `cloud_services/service`.
 
 
 ## Semantic keypoint extraction
-**We provide a test code which can be used for semantic keypoint extraction:**
+**We provide a test code that can be used for semantic keypoint extraction:**
 
 
 1) Specify your OpenAi api key
@@ -32,9 +32,9 @@ If you find this work useful, please cite:
 export OPENAI_API_KEY="your_api_key_here"
 ```
 
-2) To test the semantic keypoint extraction on your own image, you can replace `test.png` and then run
+2) To test the semantic keypoint extraction on your image, you can replace `test.png` and then run
 ```
-python semantic_keypoints/semantic_keypoint.py
+python semantic_keypoints/semantic_keypoints.py
 ```
 
 3) The semantic keypoints extraction results will be visualized.
