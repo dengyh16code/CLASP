@@ -1,30 +1,24 @@
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-import torch
-from PIL import Image
-import torch.nn.functional as F
-import matplotlib.pyplot as plt
-from utils.utils_correspondence import resize
-from model_utils.extractor_sd import load_model, process_features_and_mask
-from model_utils.extractor_dino import ViTExtractor
-from model_utils.projection_network import AggregationNetwork
-from preprocess_map import set_seed
-
 import argparse
 import base64
 import io
 import os
-import json
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
 import numpy as np
 import torch
-
+import torch.nn.functional as F
 from PIL import Image
-
 from flask import Flask, request, jsonify
+
+from model_utils.extractor_dino import ViTExtractor
+from model_utils.extractor_sd import load_model, process_features_and_mask
+from model_utils.projection_network import AggregationNetwork
+from preprocess_map import set_seed
+from utils.utils_correspondence import resize
 
 set_seed(42)
 num_patches = 60
-sd_model = sd_aug = extractor_vit = None
 aggre_net = AggregationNetwork(feature_dims=[640,1280,1280,768], projection_dim=768, device='cuda')
 aggre_net.load_pretrained_weights(torch.load('/data/home/anxing/GeoAware-SC/results_spair/best_856.PTH'))
 sd_model, sd_aug = load_model(diffusion_ver='v1-5', image_size=num_patches*16, num_timesteps=50, block_indices=[2,5,8,11])
@@ -95,25 +89,6 @@ def get_processed_features_dino(sd_model, sd_aug, aggre_net, extractor_vit, num_
     features_dino = features_dino / (norms_desc + 1e-8)
     return features_dino
 
-# img_size = 480
-# img1_path = '/data/home/anxing/GeoAware-SC/data/images/unicorn.jpg' # path to the source image
-# img1 = resize(Image.open(img1_path).convert('RGB'), target_res=img_size, resize=True, to_pil=True)
-
-# img2_path = '/data/home/anxing/GeoAware-SC/data/images/antelope.jpg' # path to the target image
-# img2 = resize(Image.open(img2_path).convert('RGB'), target_res=img_size, resize=True, to_pil=True)
-
-# # visualize the two images in the same row
-# fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-# for a in ax: a.axis('off')
-# ax[0].imshow(img1)
-# ax[0].set_title('source image')
-# ax[1].imshow(img2)
-# ax[1].set_title('target image')
-# plt.show()
-
-# feat1 = get_processed_features(sd_model, sd_aug, aggre_net, extractor_vit, num_patches, img=img1)
-# feat2 = get_processed_features(sd_model, sd_aug, aggre_net, extractor_vit, num_patches, img=img2)
-
 # Flask app
 app = Flask(__name__)
 
@@ -182,10 +157,6 @@ def process_image_dino():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-##### to be completed
-#####
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Geo Aware SC Server')

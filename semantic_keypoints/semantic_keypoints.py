@@ -1,5 +1,10 @@
 import sys
-sys.path.append("/home/adacomp/CLASP")
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,9 +16,7 @@ import os
 import json
 from cloud_services.apis.owlv2 import OWLViT
 from cloud_services.apis.sam import SAM,visualize_image
-import requests
-import base64
-import io
+from cloud_services.apis.sd_dino import SDDINO
 import cv2
 import time
 import torch
@@ -28,14 +31,15 @@ class semantic_keypoint:
     def __init__(self):
 
         self.detector = OWLViT()
-        self.sam = SAM() 
+        self.sam = SAM()
+        self.sd_dino = SDDINO()
         print("Foundation model loaded")
 
         self.img_size = 480
-        background_image_path = "/home/adacomp/CLASP/semantic_keypoints/prototype/background.png"
+        background_image_path = PROJECT_ROOT / "semantic_keypoints/prototype/background.png"
         self.background = resize(Image.open(background_image_path).convert('RGB'), target_res=self.img_size, resize=True, to_pil=True)
         print("background loaded")
-        self.prototype_image_root = "/home/adacomp/CLASP/semantic_keypoints/prototype"
+        self.prototype_image_root = str(PROJECT_ROOT / "semantic_keypoints/prototype")
     
     def update_observation(self, color_image):
         self.color_image = color_image
@@ -129,30 +133,10 @@ class semantic_keypoint:
         return [center_x, center_y, theta_rad]
     
     def get_fuse_features(self,image):
-        buffered = io.BytesIO()
-        image.save(buffered, format="PNG") 
-
-        img = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        response = requests.post("http://crane1.ddns.comp.nus.edu.sg:4052/process_image", json={"image": img})
-
-        response_json = response.json()
-        fuse_features_bytes = base64.b64decode(response_json['features'])
-        fuse_featuremap = np.load(io.BytesIO(fuse_features_bytes))
-        dino_bytes = base64.b64decode(response_json['features_dino'])
-        dino_featuremap = np.load(io.BytesIO(dino_bytes))
-        return fuse_featuremap, dino_featuremap
+        return self.sd_dino.get_features(image)
     
     def get_dino_features(self, image):
-        buffered = io.BytesIO()
-        image.save(buffered, format="PNG") 
-
-        img = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        response = requests.post("http://crane1.ddns.comp.nus.edu.sg:4052/process_image_dino", json={"image": img})
-
-        response_json = response.json()
-        dino_bytes = base64.b64decode(response_json['features_dino'])
-        dino_featuremap = np.load(io.BytesIO(dino_bytes))
-        return dino_featuremap
+        return self.sd_dino.get_dino_features(image)
     
     def clothes_classification(self, num_patches=60):
         image_processed, mask_image_processed = self.process_rgb_without_rotation(visualize=False)
@@ -484,12 +468,11 @@ class semantic_keypoint:
 
 if __name__ == "__main__":
     semantic_keypoint_instance = semantic_keypoint()
-    image_dir = "/home/adacomp/CLASP/test.png"
+    image_dir = str(PROJECT_ROOT / "test.png")
     raw_image = cv2.imread(image_dir)
     raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGB)
     semantic_keypoint_instance.update_observation(raw_image)
     semantic_keypoint_instance.load_prototype_image()
     semantic_keypoint_instance.pose_align(with_dino=True)
     detect_kp_positions = semantic_keypoint_instance.keypoints_extraction()
-    semantic_keypoint_instance.draw_keypoint(detect_kp_positions, visualize=True)
-
+    semantic_keypoint_instance.draw_keypoint(detect_kp_positions, visualize=False)

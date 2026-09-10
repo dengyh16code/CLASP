@@ -12,6 +12,8 @@ import numpy as np
 import base64
 from io import BytesIO
 
+from cloud_services.config import get_service_url
+
 def convert_pil_image_to_base64(image: Image) -> str:
     buffered = BytesIO()
     image.save(buffered, format="PNG")
@@ -21,8 +23,8 @@ class Segmentor():
     pass
 
 class SAM(Segmentor):
-    def __init__(self, server_url="http://crane5.ddns.comp.nus.edu.sg:4001"):
-        self.server_url = server_url  
+    def __init__(self, server_url=None):
+        self.server_url = (server_url or get_service_url("sam")).rstrip("/")
 
     def _send_request(self, endpoint: str, image: Image, additional_data: dict = None):
         """
