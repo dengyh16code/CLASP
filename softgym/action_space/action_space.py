@@ -238,12 +238,12 @@ class PickerPickPlace(Picker):
         for i in range(int(min(num_step, 300))):  # The maximum number of steps allowed for one pick and place
             curr_pos = np.array(pyflex.get_shape_states()).reshape(-1, 14)[:self.num_picker, :3]
             dist = np.linalg.norm(end_pos - curr_pos, axis=1)
-            if np.alltrue(dist < norm_delta):
+            if np.all(dist < norm_delta):
                 delta = end_pos - curr_pos
             super().step(np.hstack([delta, action[:, 3].reshape(-1, 1)]))
             step_sim_fn()
             total_steps += 1
-            if np.alltrue(dist < self.delta_move):
+            if np.all(dist < self.delta_move):
                 break
         return total_steps
 
@@ -261,12 +261,12 @@ class PickerPickPlace(Picker):
         model_actions = []
         for i in range(int(min(num_step, 300))):  # The maximum number of steps allowed for one pick and place
             dist = np.linalg.norm(end_pos - curr_pos, axis=1)
-            if np.alltrue(dist < norm_delta):
+            if np.all(dist < norm_delta):
                 delta = end_pos - curr_pos
             super().step(np.hstack([delta, action[:, 3].reshape(-1, 1)]))
             model_actions.append(np.hstack([delta, action[:, 3].reshape(-1, 1)]))
             curr_pos += delta
-            if np.alltrue(dist < self.delta_move):
+            if np.all(dist < self.delta_move):
                 break
         return model_actions, curr_pos
 

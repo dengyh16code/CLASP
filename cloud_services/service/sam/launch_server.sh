@@ -1,1 +1,6 @@
-python server.py --ip phoenix0.d2.comp.nus.edu.sg --port 55563
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+python "$SCRIPT_DIR/server.py" \
+  --ip "${SERVICE_HOST:-0.0.0.0}" --port "${SERVICE_PORT:-4001}"

@@ -64,7 +64,7 @@ def get_world_coord_from_pixel(pixel, depth, camera_params):
     fy = K[1, 1]
 
     u, v = pixel[0], pixel[1]
-    z = depth[int(np.rint(u)), int(np.rint(v))]
+    z = depth[int(np.rint(v)), int(np.rint(u))]
     x = (u - u0) * z / fx
     y = (v - v0) * z / fy
 
@@ -85,8 +85,8 @@ def get_world_coords_from_pixels(depth, camera_params):
     fx = K[0, 0]
     fy = K[1, 1]
 
-    x = np.linspace(0, width - 1, width).astype(np.float)
-    y = np.linspace(0, height - 1, height).astype(np.float)
+    x = np.linspace(0, width - 1, width).astype(float)
+    y = np.linspace(0, height - 1, height).astype(float)
     u, v = np.meshgrid(x, y)
     one = np.ones((height, width, 1))
     x = (u - u0) * depth / fx

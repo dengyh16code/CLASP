@@ -61,7 +61,7 @@ def dino_simularity_with_bbs(src_ft, trg_ft, mask1, mask2):
 
     descriptors1 = src_ft.permute(0, 2, 3, 1)  # 1 x 60 x 60 x 768
     descriptors1 = descriptors1.reshape(1, 1, 3600, 768)
-    descriptors2 = src_ft.permute(0, 2, 3, 1)  # 1 x 60 x 60 x 768
+    descriptors2 = trg_ft.permute(0, 2, 3, 1)  # 1 x 60 x 60 x 768
     descriptors2 = descriptors2.reshape(1, 1, 3600, 768)
 
     # applying k-means to extract k high quality well distributed correspondence pairs
@@ -146,7 +146,7 @@ def center_object(img, mask, background, size_ratio=1.05):
 
 
 
-def mask_pose_alignment(mask_ref, mask):
+def mask_pose_alignment(mask_ref, mask, rotation_angles=None):
         mask_width = 200
         mask_height = 200
         static_mask_1 = Image.fromarray(mask_ref)
@@ -176,7 +176,9 @@ def mask_pose_alignment(mask_ref, mask):
 
         mask1_processed = preprocess_mask(np.array(static_mask_1).astype(np.uint8), mask_height, mask_width)
         mask2_processed_list = []
-        rotation_angle_list = list(range(0, 360, 15))
+        rotation_angle_list = list(range(0, 360, 15)) if rotation_angles is None else list(rotation_angles)
+        if not rotation_angle_list:
+            raise ValueError("Pose search requires at least one rotation angle")
         for angle_rotate in rotation_angle_list:
             mask2_rotate = static_mask_2.rotate(angle_rotate, expand=True)
             mask2_processed = preprocess_mask(np.array(mask2_rotate).astype(np.uint8), mask_height, mask_width)

@@ -1,0 +1,8 @@
+Match the region in the test image that corresponds to the specified keypoint in the template image
+
+The input request contains:
+    - The template image annotated with a keypoint. The keypoint is marked as a red dot.
+    - An test image that is divide into several region annotated with a set of visual marks
+        
+The response should be the mark of corresponding region as the following format:
+The region corresponding to the red keypoint is ** **.

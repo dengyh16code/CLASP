@@ -1,0 +1,14 @@
+{
+  "task": "flatten the crumpled t-shirt",
+  "semantic keypoints": {
+    "P1": "right shoulder",
+    "P2": "left shoulder",
+    "P3": "right sleeve",
+    "P4": "left sleeve",
+    "P5": "right hem",
+    "P6": "left hem",
+    "P7": "center"
+  },
+  "completed": true,
+  "subtasks": []
+}

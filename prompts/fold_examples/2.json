@@ -1,0 +1,16 @@
+{
+  "task": "Fold the towel in half from left to right.",
+  "semantic keypoints": {
+    "P1": "top left corner",
+    "P2": "top right corner",
+    "P3": "center",
+    "P4": "bottom left corner",
+    "P5": "bottom right corner"
+  },
+  "completed": false,
+  "subtasks": [
+    "grasp(top left corner,bottom left corner)",
+    "moveto(top right corner,bottom right corner)",
+    "release()"
+  ]
+}

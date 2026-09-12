@@ -1,0 +1,30 @@
+{
+  "right shoulder": [
+    136,
+    104
+  ],
+  "left shoulder": [
+    363,
+    110
+  ],
+  "right sleeve": [
+    21,
+    150
+  ],
+  "left sleeve": [
+    462,
+    149
+  ],
+  "right hem": [
+    131,
+    385
+  ],
+  "left hem": [
+    352,
+    379
+  ],
+  "center": [
+    240,
+    221
+  ]
+}

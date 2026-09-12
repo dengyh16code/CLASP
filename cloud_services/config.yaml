@@ -1,12 +1,12 @@
 services:
   owl_vit:
     scheme: http
-    host: crane6.ddns.comp.nus.edu.sg
+    host: crane5.ddns.comp.nus.edu.sg
     port: 4000
   sam:
     scheme: http
-    host: crane6.ddns.comp.nus.edu.sg
-    port: 4000
+    host: crane5.ddns.comp.nus.edu.sg
+    port: 4001
   sd_dino:
     scheme: http
     host: crane1.ddns.comp.nus.edu.sg

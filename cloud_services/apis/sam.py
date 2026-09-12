@@ -23,8 +23,9 @@ class Segmentor():
     pass
 
 class SAM(Segmentor):
-    def __init__(self, server_url=None):
+    def __init__(self, server_url=None, timeout=120):
         self.server_url = (server_url or get_service_url("sam")).rstrip("/")
+        self.timeout = timeout
 
     def _send_request(self, endpoint: str, image: Image, additional_data: dict = None):
         """
@@ -45,7 +46,7 @@ class SAM(Segmentor):
             if isinstance(value, np.ndarray):
                 payload[key] = value.tolist()
 
-        response = requests.post(f"{self.server_url}/{endpoint}", json=payload)
+        response = requests.post(f"{self.server_url}/{endpoint}", json=payload, timeout=self.timeout)
         response.raise_for_status()  # Raise an exception for HTTP errors
         return response.json()
 

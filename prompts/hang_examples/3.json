@@ -1,0 +1,12 @@
+{
+  "task": "Hang the towel on the rack.",
+  "semantic keypoints": {
+    "P1": "top left corner",
+    "P2": "top right corner",
+    "P3": "center",
+    "P4": "bottom left corner",
+    "P5": "bottom right corner"
+  },
+  "completed": true,
+  "subtasks": []
+}

@@ -2,3 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Local validation and evaluation outputs
+/tests/
+/eval_results/

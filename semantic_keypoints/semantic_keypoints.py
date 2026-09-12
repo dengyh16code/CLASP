@@ -1,9 +1,10 @@
+import os
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+CLASP_HOME = Path(os.environ['CLASP_HOME'])
+if str(CLASP_HOME) not in sys.path:
+    sys.path.insert(0, str(CLASP_HOME))
 
 from PIL import Image
 import numpy as np
@@ -12,7 +13,6 @@ from utils.process import resize, mask_pose_alignment, center_object, dino_simul
 from utils.gpt_utils import request_gpt,load_prompts
 from utils.visual_prompt_utils import annotate_grid, annotate_grid_with_kp
 import copy
-import os
 import json
 from cloud_services.apis.owlv2 import OWLViT
 from cloud_services.apis.sam import SAM,visualize_image
@@ -28,7 +28,14 @@ import gc
 
 class semantic_keypoint:
 
-    def __init__(self):
+    def __init__(self, prototype_dir=None):
+
+        prototype_root = Path(prototype_dir) if prototype_dir is not None else CLASP_HOME / "semantic_keypoints/prototype_simu"
+        if not (prototype_root / "background.png").is_file():
+            raise FileNotFoundError(
+                f"Missing prototype background in {prototype_root}. Run "
+                "generate_simulation_prototypes.py or select another prototype_dir.")
+        self.prototype_image_root = str(prototype_root)
 
         self.detector = OWLViT()
         self.sam = SAM()
@@ -36,10 +43,9 @@ class semantic_keypoint:
         print("Foundation model loaded")
 
         self.img_size = 480
-        background_image_path = PROJECT_ROOT / "semantic_keypoints/prototype/background.png"
+        background_image_path = prototype_root / "background.png"
         self.background = resize(Image.open(background_image_path).convert('RGB'), target_res=self.img_size, resize=True, to_pil=True)
         print("background loaded")
-        self.prototype_image_root = str(PROJECT_ROOT / "semantic_keypoints/prototype")
     
     def update_observation(self, color_image):
         self.color_image = color_image
@@ -89,7 +95,7 @@ class semantic_keypoint:
     def detect_mask(self,obs_image, visualize=False):
         detected_objects = self.detector.detect_objects(
                 image=obs_image,
-                text_queries= ['cloth', 'trousers', 'skirt', 'tshirt', 'clothes', 'shirt'],   #'white object'], #['cloth', 'trousers', 'skirt', 'tshirt', ],
+                text_queries= ['cloth', 'trousers', 'skirt', 'tshirt', 'clothes', 'shirt', "yellow cloth", "purple cloth"],   #'white object'], #['cloth', 'trousers', 'skirt', 'tshirt', ],
                 bbox_score_top_k=25,
                 bbox_conf_threshold=0.05)
 
@@ -100,8 +106,7 @@ class semantic_keypoint:
                 best_score = det["score"]
                 best_boxes = det['bbox']
         if best_boxes is None:
-            print("No clothes detected")
-            exit(0)
+            raise RuntimeError("No clothes detected")
             
         masks = self.sam.segment_by_bboxes(image=obs_image, bboxes=[best_boxes])
         if visualize:
@@ -112,7 +117,7 @@ class semantic_keypoint:
     def detect_receptacle(self, obs_image, visualize=False): 
         detected_objects = self.detector.detect_objects(
         image=obs_image,
-        text_queries= ['box', 'hanger'],   #'white object'], #['cloth', 'trousers', 'skirt', 'tshirt', ],
+        text_queries= ['box', 'hanger'], 
         bbox_score_top_k=25,
         bbox_conf_threshold=0.10)
 
@@ -123,8 +128,7 @@ class semantic_keypoint:
                 best_score = det["score"]
                 best_boxes = det['bbox']
         if best_boxes is None:
-            print("No receptable detected")
-            exit(0)
+            raise RuntimeError("No receptacle detected")
 
         masks = self.sam.segment_by_bboxes(image=obs_image, bboxes=[best_boxes])
         center_x, center_y, theta_rad = self.get_object_orientation(masks[0]["segmentation"])
@@ -153,15 +157,15 @@ class semantic_keypoint:
         best_score = float("-inf")
         best_prototype = None
 
-        for fname in os.listdir(self.prototype_image_root):
-            if not fname.lower().endswith((".jpg", ".jpeg", ".png")) or "m." in fname:
+        for fname in sorted(os.listdir(self.prototype_image_root)):
+            if not fname.lower().endswith((".jpg", ".jpeg", ".png")) or "m." in fname or fname.endswith("_kp.png"):
                 continue  # skip masks or non-image files
 
             base_name = os.path.splitext(fname)[0]
             mask_name = base_name + ".npy"
 
             mask_path = os.path.join(self.prototype_image_root, mask_name)
-            if not os.path.exists(mask_path):
+            if not os.path.exists(mask_path) or not os.path.isfile(os.path.join(self.prototype_image_root, base_name + ".json")):
                 continue
 
             prototype_img_path = os.path.join(self.prototype_image_root, fname)
@@ -179,11 +183,23 @@ class semantic_keypoint:
                 best_score = ims_score
                 best_prototype = fname
         
+        if best_prototype is None:
+            raise RuntimeError(f"No matching image/mask/keypoint prototype found in {self.prototype_image_root}")
         print("Best prototype found:", best_prototype, "with score:", best_score)
         return best_prototype, best_score
 
-    def pose_matching_with_dino(self, num_patches=60):
+    def pose_rotation_angles(self, step, cloth_type=None):
+        """Use 15° spacing within ±30° for towels; requested step for garments."""
+        is_towel = (str(cloth_type).lower() == "towel" if cloth_type is not None else
+                    Path(getattr(self, "clothes_category", "")).stem.lower().startswith("towel_"))
+        return tuple(range(-30, 31, 15)) if is_towel else tuple(range(0, 360, step))
+
+    def pose_matching_with_dino(self, num_patches=60, rotation_angles=None):
         from torchvision.transforms import functional as TF
+
+        rotation_angles = tuple(rotation_angles) if rotation_angles is not None else self.pose_rotation_angles(30)
+        if not rotation_angles:
+            raise ValueError("Pose search requires at least one rotation angle")
 
         # Resize source mask
         prototype_mask_pil = Image.fromarray(self.prototype_mask.astype(np.uint8))
@@ -201,8 +217,7 @@ class semantic_keypoint:
         best_score = float("-inf")
         best_angle = 0
 
-        for angle_idx in range(12):
-            angle = angle_idx * 360 / 12  # i.e., 0°, 30°, ..., 330°
+        for angle in rotation_angles:
 
             # Rotate query image and mask
             rotated_query_image = TF.rotate(obs_image, angle, interpolation=TF.InterpolationMode.BILINEAR)
@@ -252,11 +267,13 @@ class semantic_keypoint:
         
         print("prototype loaded")
     
-    def pose_align(self, with_dino=False):
+    def pose_align(self, with_dino=False, cloth_type=None):
         if with_dino:
-            self.angle_rotate,_ = self.pose_matching_with_dino()
+            self.angle_rotate,_ = self.pose_matching_with_dino(
+                rotation_angles=self.pose_rotation_angles(30, cloth_type))
         else:
-            self.angle_rotate = mask_pose_alignment(self.prototype_mask, self.obs_mask)
+            self.angle_rotate = mask_pose_alignment(self.prototype_mask, self.obs_mask,
+                rotation_angles=self.pose_rotation_angles(15, cloth_type))
         # self.angle_rotate = 0
         print("pose:" +str(self.angle_rotate)+ " degree")
     
@@ -435,7 +452,8 @@ class semantic_keypoint:
 
         return detect_kp_list
     
-    def draw_keypoint(self, detect_kp_list, visualize):
+    def draw_keypoint(self, detect_kp_list, visualize=False, save_path=None):
+        """Draw detected keypoints and optionally save the annotated image."""
         with_descriptor = True
         canvas = copy.deepcopy(self.color_image)
         colors_list = [
@@ -462,17 +480,27 @@ class semantic_keypoint:
             plt.axis('off')
             plt.show()
 
+        if save_path is not None:
+            save_path = Path(save_path)
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(canvas).save(save_path)
+            print(f"Keypoint image saved to {save_path}")
+
         return canvas
 
 
 
 if __name__ == "__main__":
-    semantic_keypoint_instance = semantic_keypoint()
-    image_dir = str(PROJECT_ROOT / "test.png")
+    prototype_root = CLASP_HOME / "semantic_keypoints/prototype"
+    semantic_keypoint_instance = semantic_keypoint(prototype_dir=prototype_root)
+    image_dir = str(CLASP_HOME / "semantic_keypoints/test.png")
     raw_image = cv2.imread(image_dir)
     raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGB)
     semantic_keypoint_instance.update_observation(raw_image)
     semantic_keypoint_instance.load_prototype_image()
     semantic_keypoint_instance.pose_align(with_dino=True)
-    detect_kp_positions = semantic_keypoint_instance.keypoints_extraction()
-    semantic_keypoint_instance.draw_keypoint(detect_kp_positions, visualize=False)
+    detect_kp_positions = semantic_keypoint_instance.keypoints_extraction(with_vlm=False)
+    semantic_keypoint_instance.draw_keypoint(
+        detect_kp_positions,
+        save_path=CLASP_HOME / "semantic_keypoints/extracted_keypoints.png",
+    )

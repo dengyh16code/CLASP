@@ -1,0 +1,19 @@
+{
+  "task": "Hang the trousers on the rack.",
+  "semantic keypoints": {
+    "P1": "right waistband",
+    "P2": "left waistband",
+    "P3": "right hem",
+    "P4": "left hem",
+    "P5": "center"
+  },
+  "completed": false,
+  "subtasks": [
+    "grasp(right waistband,left waistband)",
+    "moveto(up)",
+    "rotate()",
+    "moveto(rack)",
+    "moveto(forward and down)",
+    "release()"
+  ]
+}

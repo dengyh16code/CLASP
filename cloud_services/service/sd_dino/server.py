@@ -20,7 +20,7 @@ from utils.utils_correspondence import resize
 set_seed(42)
 num_patches = 60
 aggre_net = AggregationNetwork(feature_dims=[640,1280,1280,768], projection_dim=768, device='cuda')
-aggre_net.load_pretrained_weights(torch.load('/data/home/anxing/GeoAware-SC/results_spair/best_856.PTH'))
+aggre_net.load_pretrained_weights(torch.load('/data/home/yuhong/GeoAware-SC/results_spair/best_856.PTH'))
 sd_model, sd_aug = load_model(diffusion_ver='v1-5', image_size=num_patches*16, num_timesteps=50, block_indices=[2,5,8,11])
 extractor_vit = ViTExtractor('dinov2_vitb14', stride=14, device='cuda')
 print("Model loaded")
@@ -161,7 +161,7 @@ def process_image_dino():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Geo Aware SC Server')
     parser.add_argument('--ip', default='0.0.0.0', type=str, help='IP address to run the app on. Use "0.0.0.0" for your machine\'s IP address')
-    parser.add_argument('--port', default=4002, type=int, help='Port number to run the app on')
+    parser.add_argument('--port', default=4054, type=int, help='Port number to run the app on')
     args = parser.parse_args()
 
     app.run(host=args.ip, port=args.port, debug=True, use_reloader=False)

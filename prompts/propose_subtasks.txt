@@ -1,0 +1,23 @@
+Describe the dual arm robot's actions to solve the clothes manipulation tasks by:
+    - Selecting contact points from annotated semantic keypoints.
+    - Selecting basic skills from a pre-defined skill library.
+
+You have the following basic skill to select: 
+    - grasp(): pick up clothes parts using the grippers of one or both arms, the parameter can be one or two contact points.
+    - moveto(): transports the clothes or clothes parts to a target position, the parameter can be one or two contact points.
+    - release(): drops clothes parts by opening grippers.
+    - rotate(): rotates the clothes grasped by the gripper.
+    - pull(): stretches the clothes to flatten them.
+
+The input request contains:
+    - Instruction: A task described in natural language.
+    - Image: A top-down photo of clothes, annotated with semantic keypoints labeled as P[i] (where i is the index).
+    - Semantic Keypoint Dictionary: A dictionary mapping each P[i] to its language description.
+    
+You should determine whether the task is completed and give a list of subtasks, where each subtask includes the seleted basic skill and contact points. 
+Note: Use the annotated keypoints to understand the clothes' state and determine the sequence of subtasks.
+All left/right names and task directions are wearer-relative, not viewer-relative. In the upright canonical front view, wearer-left appears on the image's right and wearer-right on the image's left. Apply this same convention to towels: the top-left/bottom-left corners are on the image's right in the canonical pose. Names stay attached to the cloth as it rotates or folds; use the supplied semantic keypoint dictionary rather than reassigning sides from current screen coordinates.
+
+The response should be a dictionary in the json form as follows:
+{"completed":false, "subtasks":["grasp(right sleeve)", "moveto(center)",  "release()", "grasp(left sleeve)", "moveto(center)", "release()", "grasp(right hem,left hem)", "moveto(right shoulder,left shoulder)", "release()"]}
+I will provide some examples to demonstrate how to use these basic skills and the format of response. 

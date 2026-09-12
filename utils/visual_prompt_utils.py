@@ -2,7 +2,11 @@ from string import ascii_lowercase
 import os
 import numpy as np
 import sys
-sys.path.append("/home/adacomp/CLASP")
+
+CLASP_HOME = os.environ['CLASP_HOME']
+if CLASP_HOME not in sys.path:
+    sys.path.insert(0, CLASP_HOME)
+
 import matplotlib.pyplot as plt
 from scipy.interpolate import make_interp_spline
 from PIL import Image
@@ -11,10 +15,6 @@ import traceback
 import json
 from utils.gpt_utils import request_gpt
 from utils.gpt_utils import request_gpt_incontext
-
-from openai import OpenAI
-client = OpenAI()
-
 
 # --------------------------------
 # Proposal and Selection
@@ -81,60 +81,6 @@ def remove_trailing_comments(input_string):
 
 def request_plan(
         task_instruction,
-        obs_image,
-        plan_with_obs_image,
-        prompts,
-        example_images=None,
-        example_responses=None,
-        debug=False):
-    """Decompose the task into subtasks.
-    """
-    text_requests = [f"Task: {task_instruction}"]
-
-    if plan_with_obs_image:
-        image_requests = [obs_image]
-    else:
-        image_requests = []
-
-    # Generate the subtask plan.
-    if (example_images is not None and
-            example_responses is not None):
-        assert len(example_images) == len(example_responses)
-        res = request_gpt_incontext(
-            text_requests,
-            image_requests,
-            prompts['propose_subtasks'],
-            example_images=example_images,
-            example_responses=example_responses)
-    else:
-        res = request_gpt(
-            text_requests,
-            image_requests,
-            prompts['propose_subtasks'])
-    
-    # Merge picking and placing into higher-evel subtasks.
-    res_filtered = request_gpt(
-        text_requests + [res],
-        image_requests,
-        prompts['filter_subtasks'])
-
-    if debug:
-        print('--------------------------------')
-        print('| Generated plan.')
-        print('--------------------------------')
-        print(res)
-
-        print('--------------------------------')
-        print('| Filtered plan.')
-        print('--------------------------------')
-        print(res_filtered)
-
-    plan_info = parse_json_string(res_filtered)
-
-    return plan_info
-
-def request_plan_with_kp(
-        task_instruction,
         semantic_keypoints,
         obs_image,
         plan_with_obs_image,
@@ -167,190 +113,6 @@ def request_plan_with_kp(
             prompts['propose_subtasks'])
 
     return res
-
-def request_plan_without_kp(
-        task_instruction,
-        obs_image,
-        plan_with_obs_image,
-        prompts,
-        example_images=None,
-        example_responses=None):
-    """Decompose the task into subtasks.
-    """
-    text_requests = [f"task: {task_instruction}"]
-
-    if plan_with_obs_image:
-        image_requests = [obs_image]
-    else:
-        image_requests = []
-
-    # Generate the subtask plan.
-    if (example_images is not None and
-            example_responses is not None):
-        assert len(example_images) == len(example_responses)
-        res = request_gpt_incontext(
-            text_requests,
-            image_requests,
-            prompts['propose_subtasks_nokp'],
-            example_images=example_images,
-            example_responses=example_responses)
-    else:
-        res = request_gpt(
-            text_requests,
-            image_requests,
-            prompts['propose_subtasks_nokp'])
-
-    return res
-
-
-def request_motion(  # NOQA
-        subtask,
-        obs_image_reshaped,
-        annotated_image,
-        candidate_keypoints,
-        waypoint_grid_size,
-        prompts,
-        debug=False,
-        example_images=None,
-        example_responses=None,
-        loaded_context=None,
-        use_center=False,
-        log_dir=None,
-        suffix='',
-        add_caption=True,
-):
-    """Generate the visual marks that specify the motion.
-    """
-    annotation_size = obs_image_reshaped.size[:2]
-    # print('annotation_size (request_motion)', annotation_size)
-
-    text_requests = [f"Task: {subtask}"]
-
-    if loaded_context is not None:
-        context = loaded_context
-    else:
-        context = None
-        while context is None:
-            if (example_images is not None and
-                    example_responses is not None):
-                print('example_respnses:')
-                print(example_responses)
-                assert len(example_images) == len(example_responses)
-                res = request_gpt_incontext(
-                    text_requests,
-                    [annotated_image],
-                    prompts['select_motion'],
-                    example_images=example_images,
-                    example_responses=example_responses)
-            else:
-                res = request_gpt(
-                    text_requests,
-                    [annotated_image],
-                    prompts['select_motion'])
-
-            if debug:
-                print('--------------------------------')
-                print('| Selected motion.')
-                print('--------------------------------')
-                print(res)
-            context = parse_json_string(res)
-
-    context_json = context
-    grasp_keypoint = None
-    val = context['grasp_keypoint']
-    if val != '':
-        if use_center:
-            idx = 0
-        else:
-            idx = int(val[1:]) - 1
-        grasp_keypoint = candidate_keypoints['grasped'][idx]
-
-    function_keypoint = None
-    val = context['function_keypoint']
-    if val != '':
-        idx = int(val[1:]) - 1
-        function_keypoint = candidate_keypoints['grasped'][idx]
-
-    target_keypoint = None
-    val = context['target_keypoint']
-    if val != '':
-        if use_center:
-            idx = 0
-        else:
-            idx = int(val[1:]) - 1
-        target_keypoint = candidate_keypoints['unattached'][idx]
-    else:
-        # A patch for the missing target keypoint issue during pick-and-place.
-        pass
-        # if (
-        #         subtask['object_grasped'] is not None and
-        #         subtask['object_unattached'] is not None
-        # ):
-        #     target_keypoint = candidate_keypoints['unattached'][0]
-
-    pre_contact_tile = None
-    pre_contact_waypoint = None
-    val = context['pre_contact_tile']
-    if val != '':
-        pre_contact_tile = [
-            waypoint_grid_size[1] - int(val[1]),
-            ascii_lowercase.index(val[0]),
-        ]
-        pre_contact_waypoint = sample_waypoint_in_tile(
-            annotation_size, waypoint_grid_size, pre_contact_tile)
-
-    post_contact_tile = None
-    post_contact_waypoint = None
-    val = context['post_contact_tile']
-    if val != '':
-        post_contact_tile = [
-            waypoint_grid_size[1] - int(val[1]),
-            ascii_lowercase.index(val[0]),
-        ]
-        post_contact_waypoint = sample_waypoint_in_tile(
-            annotation_size, waypoint_grid_size, post_contact_tile)
-
-    pre_contact_height = context['pre_contact_height']
-    post_contact_height = context['post_contact_height']
-    target_angle = context['target_angle']
-
-    # if target_keypoint is None:
-    #     pre_contact_tile = None
-    #     pre_contact_waypoint = None
-    #     post_contact_tile = None
-    #     post_contact_waypoint = None
-
-    if function_keypoint is None:
-        target_angle = 'forward'
-
-    context = dict(
-        keypoints_2d=dict(
-            grasp=grasp_keypoint,
-            function=function_keypoint,
-            target=target_keypoint,
-        ),
-        waypoints_2d=dict(
-            pre_contact=[pre_contact_waypoint],
-            post_contact=[post_contact_waypoint],
-        ),
-        target_euler=target_angle,
-        pre_contact_height=pre_contact_height,
-        post_contact_height=post_contact_height,
-    )
-
-    if debug:
-        # if True:
-        log_img = annotate_motion(obs_image_reshaped, context,
-                                  add_caption=add_caption)
-        if log_dir is not None:
-            log_img.save(os.path.join(log_dir, f'motion{suffix}.png'))
-            out_file = open(os.path.join(log_dir, f'context{suffix}.json'), 'w')
-            json.dump(context_json, out_file)
-
-        return context, context_json, log_img
-    else:
-        return context, context_json, None
-
 
 
 
@@ -678,35 +440,36 @@ def annotate_motion(image, context, log_dir=None, add_caption=True):
 
     return Image.open(buf)
 
-def load_few_shot_examples(examples_dir):
-    example_images = []
-    example_tasks = []
-    example_responses = []
-    # Load data from folder
-    file_numbers = [
-        int(os.path.splitext(f)[0]) for f in os.listdir(examples_dir) if f.endswith((".json", ".png"))
-    ]
-    max_num = max(file_numbers) if file_numbers else -1  # Handle empty folder case
+def load_example_pairs(examples_dir, task=None):
+    """Read one task folder only, with numeric ordering and strict pairing.
 
-    # Load files in numerical order
-    for i in range(max_num + 1):
-        json_path = os.path.join(examples_dir, f"{i}.json")
-        img_path = os.path.join(examples_dir, f"{i}.png")
+    With task='fold' (or 'TshirtFold'), examples_dir is the prompts root.
+    Without task, examples_dir must name the desired examples folder directly.
+    """
+    from pathlib import Path
+    from simulation_utils import task_kind
+    directory = Path(examples_dir)
+    if task is not None:
+        directory = directory / f"{task_kind(task)}_examples"
+    if not directory.is_dir():
+        raise FileNotFoundError(directory)
+    json_ids = {p.stem for p in directory.glob("*.json")}
+    image_ids = {p.stem for p in directory.glob("*.png")}
+    if json_ids != image_ids:
+        raise ValueError(f"Unpaired example images/JSON in {directory}")
+    pairs = []
+    for index in sorted(json_ids, key=int):
+        data = json.loads((directory / f"{index}.json").read_text())
+        with Image.open(directory / f"{index}.png") as image:
+            pairs.append((image.convert("RGB"), data))
+    return pairs
 
-        # Load JSON file
-        if os.path.exists(json_path):
-            with open(json_path, "r") as f:
-                data = json.load(f)
-                example_tasks.append(data["task"])
-                response_diction = {"completed": data["completed"], "subtasks": data["subtasks"]}
-                #example_responses.append({"completed": data["completed"], "subtasks": data["subtasks"]})
 
-                example_response = json.dumps(response_diction, indent=4)
-                example_response = f"""```json{example_response}```"""
-                example_responses.append(example_response)
-
-        # Load image
-        if os.path.exists(img_path):
-            example_images.append(Image.open(img_path))
-    
-    return example_images, example_tasks, example_responses
+def load_few_shot_examples(examples_dir, task=None):
+    pairs = load_example_pairs(examples_dir, task=task)
+    images = [image for image, _ in pairs]
+    tasks = [data["task"] for _, data in pairs]
+    responses = ["```json" + json.dumps({"completed": data["completed"],
+                                         "subtasks": data["subtasks"]}, indent=4) + "```"
+                 for _, data in pairs]
+    return images, tasks, responses

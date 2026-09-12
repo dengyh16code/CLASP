@@ -11,7 +11,7 @@ with open('../../images/2.jpg', 'rb') as img_file:
 start_time = time.time()
 
 # Send request
-response = requests.post('http://crane1.d2.comp.nus.edu.sg:55575/process_image', 
+response = requests.post('http://127.0.0.1:4054/process_image', 
                         json={'image': img_base64})
 response = response.json()
 # Decode the features
@@ -26,4 +26,3 @@ end_time = time.time()
 print(f"Time taken: {end_time - start_time} seconds")
 
 print(features_array.shape)
-

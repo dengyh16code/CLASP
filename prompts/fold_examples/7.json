@@ -1,0 +1,21 @@
+{
+  "task": "Fold the long-sleeved T-shirt for storage.",
+  "semantic keypoints": {
+    "P1": "right shoulder",
+    "P2": "left shoulder",
+    "P3": "right sleeve",
+    "P4": "left sleeve",
+    "P5": "right hem",
+    "P6": "left hem",
+    "P7": "center"
+  },
+  "completed": false,
+  "subtasks": [
+    "grasp(left sleeve)",
+    "moveto(center)",
+    "release()",
+    "grasp(right hem,left hem)",
+    "moveto(right shoulder,left shoulder)",
+    "release()"
+  ]
+}

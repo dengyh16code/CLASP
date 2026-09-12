@@ -86,8 +86,9 @@ class Detector():
     pass
 
 class OWLViT(Detector):
-    def __init__(self, server_url=None):
+    def __init__(self, server_url=None, timeout=120):
         self.server_url = (server_url or get_service_url("owl_vit")).rstrip("/")
+        self.timeout = timeout
 
     def detect_objects(self, image: Image.Image, text_queries: list[str], bbox_score_top_k=20, bbox_conf_threshold=0.5):
         """
@@ -127,6 +128,7 @@ class OWLViT(Detector):
         response = requests.post(
             self.server_url + "/owl_detect", 
             json=payload,
+            timeout=self.timeout,
         )
         
         # Check for request failure

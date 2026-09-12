@@ -1,4 +1,5 @@
-export PYFLEXROOT=${PWD}/PyFlex
-export PYTHONPATH=${PYFLEXROOT}/bindings/build:$PYTHONPATH
-export LD_LIBRARY_PATH=${PYFLEXROOT}/external/SDL2-2.0.4/lib/x64:$LD_LIBRARY_PATH
-export CLOTH3D_PATH=${PWD}/cloth3d
+export CLASP_HOME="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export PYFLEXROOT="${CLASP_HOME}/PyFlex"
+export PYTHONPATH="${PYFLEXROOT}/bindings/build${PYTHONPATH:+:${PYTHONPATH}}"
+export LD_LIBRARY_PATH="${PYFLEXROOT}/external/SDL2-2.0.4/lib/x64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+export CLOTH3D_PATH="${CLASP_HOME}/cloth3d"

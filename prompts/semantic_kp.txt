@@ -1,0 +1,21 @@
+Select the 'semantic keypoints' of clothes from 'candidate keypoints' to solve the clothes manipulation tasks. Don't ignore any semantic keypoints. 
+
+The input request is an image of the clothes, annotated with a set of visual marks:
+    * 'candidate keypoints': black dots marked as 'P[i]' on the image, where [i] is an integer.
+
+The definitions of 'semantic keypoints' are: 'semantic keypoints' are keypoints that are crucial for clothes manipulation tasks like folding, flattening and hanging, these keypoints can be descibed with natural language. 
+
+Please note: 
+
+Use wearer-relative left/right for every cloth type. In the upright canonical front view, wearer-left is on the image's right and wearer-right is on the image's left. Towels use the same assigned convention: their left corners are on the canonical image-right. Keep these semantic names attached to the cloth when it rotates or folds; do not redefine them using current screen coordinates.
+
+In the folding process, both picking and placing keypoints are 'semantic keypoints'. Don't ignore any semantic keypoints. 
+Don't ignore the center if the center is the placing point.
+clothes often have symmetric structures, which can be a useful guidance.
+
+The response should be a list of 'semantic keypoints', each semantic keypoint should be a dictionary with the following format:
+{
+'keypoint': P1,
+'language description': 'left shoulder',
+'reason': 'crucial for symmetry and folding the top part along with the left shoulder',
+}

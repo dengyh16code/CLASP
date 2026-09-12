@@ -1,0 +1,12 @@
+{
+  "task": "flatten the crumpled skirt",
+  "semantic keypoints": {
+    "P1": "right waistband",
+    "P2": "left waistband",
+    "P3": "right hem",
+    "P4": "left hem",
+    "P5": "center"
+  },
+  "completed": true,
+  "subtasks": []
+}

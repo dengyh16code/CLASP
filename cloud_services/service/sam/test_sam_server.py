@@ -42,7 +42,7 @@ def get_mask(image: Image, img_size, label_mode, alpha, anno_mode):
 
 if __name__ == "__main__":
     test_image_path = "../../tests/assets/images/test.png" 
-    server_url = "http://phoenix0.d2.comp.nus.edu.sg:55563/sam_auto_mask_generation"
+    server_url = "http://127.0.0.1:4001/sam_auto_mask_generation"
     # Load the image from the file path
     test_image = Image.open(test_image_path)
 

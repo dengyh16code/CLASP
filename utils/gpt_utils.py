@@ -4,24 +4,59 @@ import requests
 from io import BytesIO
 
 
-# Get OpenAI API Key from environment variable
+CLASP_HOME = os.environ['CLASP_HOME']
 
-api_key = os.environ['OPENAI_API_KEY']
-print("openai loaded")
+DEFAULT_LLM_MODEL_NAME = 'gpt-5.6'
+DEFAULT_VLM_MODEL_NAME = 'gpt-5.6'
 
-headers = {
-    'Content-Type': 'application/json',
-    'Authorization': f'Bearer {api_key}'
+
+# The dictionary key is the name passed to request_gpt(). ``model_name`` is
+# the name sent to the provider, which lets aliases such as ``gpt-5.2-lab``
+# use a different endpoint without changing call sites.
+
+model_dict = {
+    'gpt-5.6': {
+        'api_key': os.getenv('OPENAI_API_KEY'),
+        'base_url': 'https://api.openai.com/v1',
+        'model_name': 'gpt-5.6',
+    }
 }
 
-DEFAULT_LLM_MODEL_NAME = 'gpt-4'
-DEFAULT_VLM_MODEL_NAME = 'gpt-4o-2024-05-13'
+
+def _get_model_config(model_name):
+    """Return provider settings for a configured model or OpenAI defaults."""
+    config = model_dict.get(model_name)
+    if config is None:
+        # Preserve support for arbitrary OpenAI model names used by callers.
+        config = {
+            'api_key': os.getenv('OPENAI_API_KEY'),
+            'base_url': 'https://api.openai.com/v1',
+            'model_name': model_name,
+        }
+
+    if not config['api_key']:
+        raise ValueError(f'No API key is configured for model {model_name!r}')
+    if not config['base_url']:
+        raise ValueError(
+            f'No base URL is configured for model {model_name!r}; '
+            'set DASHSCOPE_WORKSPACE_ID'
+        )
+
+    return config
+
+
+def _request_headers(api_key):
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+    }
+
 
 def load_prompts():
     """Load prompts from files.
     """
     prompts = dict()
-    prompt_dir = "/home/adacomp/CLASP/prompts"
+    prompt_dir = os.path.join(CLASP_HOME, 'prompts')
     for filename in os.listdir(prompt_dir):
         path = os.path.join(prompt_dir, filename)
         if os.path.isfile(path) and path[-4:] == '.txt':
@@ -87,16 +122,14 @@ def prepare_inputs(messages,
         'messages': [
             {
                 'role': 'system',
-                'content': [
-                    meta_prompt
-                ]
+                'content': meta_prompt
             },
             {
                 'role': 'user',
                 'content': user_content,
             }
         ],
-        'max_tokens': 800
+        'max_completion_tokens': 800
     }
 
     return payload
@@ -115,25 +148,25 @@ def request_gpt(message,
         else:
             model_name = DEFAULT_VLM_MODEL_NAME
 
+    model_config = _get_model_config(model_name)
+
     payload = prepare_inputs(message,
                              images,
                              meta_prompt=meta_prompt,
-                             model_name=model_name,
+                             model_name=model_config['model_name'],
                              local_image=local_image)
 
     response = requests.post(
-        'https://api.openai.com/v1/chat/completions',
-        headers=headers,
-        json=payload)
+        f"{model_config['base_url'].rstrip('/')}/chat/completions",
+        headers=_request_headers(model_config['api_key']),
+        json=payload,
+        timeout=120)
+    response.raise_for_status()
 
     try:
         res = response.json()['choices'][0]['message']['content']
-    except Exception:
-        print('\nInvalid response: ')
-        print(response)
-        print('\nInvalid response: ')
-        print(response.json())
-        exit()
+    except (KeyError, IndexError, TypeError, ValueError) as error:
+        raise RuntimeError('Model response has no valid message content') from error
 
     return res
 
@@ -203,16 +236,14 @@ def prepare_inputs_incontext(
         'messages': [
             {
                 'role': 'system',
-                'content': [
-                    meta_prompt
-                ]
+                'content': meta_prompt
             },
             {
                 'role': 'user',
                 'content': user_content,
             }
         ],
-        'max_tokens': 800
+        'max_completion_tokens': 800
     }
 
     return payload
@@ -233,27 +264,27 @@ def request_gpt_incontext(
         else:
             model_name = DEFAULT_VLM_MODEL_NAME
 
+    model_config = _get_model_config(model_name)
+
     payload = prepare_inputs_incontext(
         message,
         images,
         meta_prompt=meta_prompt,
-        model_name=model_name,
+        model_name=model_config['model_name'],
         local_image=local_image,
         example_images=example_images,
         example_responses=example_responses)
 
     response = requests.post(
-        'https://api.openai.com/v1/chat/completions',
-        headers=headers,
-        json=payload)
+        f"{model_config['base_url'].rstrip('/')}/chat/completions",
+        headers=_request_headers(model_config['api_key']),
+        json=payload,
+        timeout=120)
+    response.raise_for_status()
 
     try:
         res = response.json()['choices'][0]['message']['content']
-    except Exception:
-        print('\nInvalid response: ')
-        print(response)
-        print('\nInvalid response: ')
-        print(response.json())
-        exit()
+    except (KeyError, IndexError, TypeError, ValueError) as error:
+        raise RuntimeError('Model response has no valid message content') from error
 
     return res
